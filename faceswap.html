@@ -1,0 +1,2774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FaceSwap Studio — AI Face Swap (Photo, Video & Live Webcam)</title>
+  <meta name="description" content="FaceSwap Studio: Ultimate AI-powered face swapping for photos, videos, and live webcam streams." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    :root {
+      --bg-deep:       #070b14;
+      --bg-card:       rgba(255,255,255,0.03);
+      --bg-card-hover: rgba(255,255,255,0.06);
+      --border:        rgba(255,255,255,0.08);
+      --border-glow:   rgba(139,92,246,0.35);
+      --accent-1:      #8b5cf6;
+      --accent-2:      #06b6d4;
+      --accent-grad:   linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+      --accent-grad2:  linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #06b6d4 100%);
+      --text-primary:  #f1f5f9;
+      --text-secondary:#94a3b8;
+      --text-muted:    #475569;
+      --success:       #10b981;
+      --warning:       #f59e0b;
+      --danger:        #ef4444;
+      --radius-sm:     8px;
+      --radius-md:     16px;
+      --radius-lg:     24px;
+      --shadow-glow:   0 0 45px rgba(139,92,246,0.12);
+      --transition:    all 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Animated background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background:
+        radial-gradient(ellipse 600px 600px at 20% 20%, rgba(139,92,246,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 500px 500px at 80% 80%, rgba(6,182,212,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 400px 400px at 50% 50%, rgba(236,72,153,0.03) 0%, transparent 70%);
+      animation: bgFloat 18s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes bgFloat {
+      0%   { transform: translate(0,0) rotate(0deg); }
+      100% { transform: translate(1.5%,1.5%) rotate(0.5deg); }
+    }
+
+    /* ── Grid Noise Overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ── */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--accent-grad);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 20px rgba(139,92,246,0.3);
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      background: var(--accent-grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    /* ── Model status badge ── */
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      backdrop-filter: blur(10px);
+      transition: var(--transition);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+      transition: var(--transition);
+    }
+
+    .status-badge.ready .status-dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .status-badge.warning .status-dot { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+    .status-badge.error .status-dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+    /* ── Model alert banner ── */
+    .model-alert {
+      display: none;
+      background: rgba(245,158,11,0.06);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #fbbf24;
+    }
+
+    .model-alert.visible { display: block; }
+    .model-alert strong { color: #fcd34d; }
+    .model-alert code {
+      background: rgba(245,158,11,0.12);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .model-alert a {
+      color: #06b6d4;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    /* ── Sidebar + Workspace Grid ── */
+    .app-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .app-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-lg);
+      padding: 1px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .card:hover {
+      border-color: rgba(255,255,255,0.12);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .card-title .badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 100px;
+      background: rgba(139,92,246,0.15);
+      color: #a78bfa;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ── Tabbed View Container ── */
+    .tabs-card {
+      min-height: 520px;
+    }
+
+    .tabs-header {
+      display: flex;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      padding: 4px;
+      border-radius: 100px;
+      margin-bottom: 24px;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 100px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: var(--transition);
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .tab-btn.active {
+      background: var(--accent-grad);
+      color: white;
+      box-shadow: 0 4px 15px rgba(139,92,246,0.25);
+    }
+
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Upload Zones ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      min-height: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      background: rgba(0,0,0,0.15);
+      padding: 20px;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--accent-1);
+      background: rgba(139,92,246,0.04);
+      box-shadow: 0 0 30px rgba(139,92,246,0.1) inset;
+    }
+
+    .upload-zone.has-image {
+      border-color: rgba(139,92,246,0.3);
+      border-style: solid;
+      padding: 0;
+    }
+
+    .upload-zone .upload-icon {
+      font-size: 38px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+      transition: var(--transition);
+    }
+
+    .upload-zone:hover .upload-icon { opacity: 0.8; transform: scale(1.08); }
+
+    .upload-zone .upload-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .upload-zone .upload-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* ── Preview inside upload zone ── */
+    .upload-preview {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .upload-preview img, 
+    .upload-preview video {
+      width: 100%;
+      height: 240px;
+      object-fit: contain;
+      background: #020408;
+      border-radius: calc(var(--radius-md) - 2px);
+      display: block;
+    }
+
+    .upload-preview canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 240px;
+      border-radius: calc(var(--radius-md) - 2px);
+      pointer-events: none;
+    }
+
+    .upload-preview .preview-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 10px 14px;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 0 0 calc(var(--radius-md) - 2px) calc(var(--radius-md) - 2px);
+    }
+
+    .preview-overlay .face-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: #10b981;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preview-overlay .clear-btn {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 6px;
+      color: #f87171;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .preview-overlay .clear-btn:hover { background: rgba(239,68,68,0.3); }
+
+    /* ── Controls Section ── */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-label .tooltip-icon {
+      font-size: 12px;
+      cursor: help;
+      opacity: 0.6;
+    }
+
+    select, input[type="number"] {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      padding: 10px 14px;
+      transition: var(--transition);
+    }
+
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+    }
+
+    select:focus, input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent-1);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+    }
+
+    /* ── Range Slider ── */
+    .slider-track {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      flex: 1;
+      height: 4px;
+      border-radius: 100px;
+      background: rgba(255,255,255,0.08);
+      cursor: pointer;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-grad);
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(139,92,246,0.4);
+      transition: var(--transition);
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .slider-value {
+      min-width: 38px;
+      text-align: right;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-1);
+    }
+
+    /* ── Action Buttons ── */
+    .btn-swap {
+      width: 100%;
+      position: relative;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 100px;
+      background: var(--accent-grad);
+      color: white;
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 4px 25px rgba(139,92,246,0.25);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btn-swap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .btn-swap:hover::before { opacity: 1; }
+    .btn-swap:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(139,92,246,0.4);
+    }
+
+    .btn-swap:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-swap.processing::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 300%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      animation: shimmer 1.2s infinite;
+    }
+
+    @keyframes shimmer {
+      0%   { transform: translateX(-33%); }
+      100% { transform: translateX(33%); }
+    }
+
+    /* ── Interactive Tags ── */
+    .face-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .face-tag {
+      padding: 4px 10px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      color: var(--text-secondary);
+      background: transparent;
+    }
+
+    .face-tag:hover { border-color: var(--accent-1); color: var(--accent-1); }
+    .face-tag.selected {
+      background: rgba(139,92,246,0.2);
+      border-color: var(--accent-1);
+      color: #a78bfa;
+    }
+
+    .face-tags-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* ── Video Processing Display ── */
+    .video-processing-card {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 30px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-top: 24px;
+    }
+
+    .video-processing-card.active { display: flex; }
+
+    .progress-circle-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+    }
+
+    .progress-circle-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.05);
+      stroke-width: 8;
+    }
+
+    .progress-circle-bar {
+      fill: none;
+      stroke: url(#progress-grad);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 282.6;
+      stroke-dashoffset: 282.6;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      transition: stroke-dashoffset 0.35s ease-in-out;
+    }
+
+    .progress-text-val {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .live-preview-box {
+      width: 240px;
+      height: 160px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #020408;
+      position: relative;
+    }
+
+    .live-preview-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .live-preview-label {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(139, 92, 246, 0.85);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .processing-details {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-align: center;
+    }
+
+    .proc-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .proc-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* ── Live Webcam display ── */
+    .webcam-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+    }
+
+    .webcam-canvas-wrapper {
+      width: 100%;
+      max-width: 580px;
+      height: 380px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: #020408;
+      overflow: hidden;
+      position: relative;
+    }
+
+    @media (max-width: 640px) {
+      .webcam-canvas-wrapper { height: 260px; }
+    }
+
+    .webcam-canvas-wrapper canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .webcam-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .webcam-placeholder .ico { font-size: 48px; opacity: 0.3; }
+
+    .webcam-stats {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(7, 11, 20, 0.75);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #06b6d4;
+      display: none;
+    }
+
+    .webcam-stats.active { display: block; }
+
+    .webcam-btn {
+      padding: 12px 30px;
+      border-radius: 100px;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .webcam-btn.start {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #10b981;
+    }
+
+    .webcam-btn.start:hover {
+      background: rgba(16, 185, 129, 0.25);
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
+    }
+
+    .webcam-btn.stop {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    .webcam-btn.stop:hover {
+      background: rgba(239, 68, 68, 0.25);
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.15);
+    }
+
+    /* ── Image Result view ── */
+    .result-section {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .result-section.visible { display: block; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .result-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      background: var(--accent-grad2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .result-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .result-meta span { color: var(--success); font-weight: 600; }
+
+    .comparison-container {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media (max-width: 640px) {
+      .comparison-grid { grid-template-columns: 1fr; }
+    }
+
+    .comparison-panel {
+      position: relative;
+    }
+
+    .comparison-panel img, 
+    .comparison-panel video {
+      width: 100%;
+      height: 380px;
+      object-fit: contain;
+      background: #020408;
+      display: block;
+    }
+
+    .comparison-label {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .comparison-divider {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1px;
+      height: 100%;
+      background: rgba(255,255,255,0.1);
+      pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+      .comparison-divider { display: none; }
+    }
+
+    .comparison-divider::after {
+      content: '↔';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.75);
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 100px;
+      background: rgba(16,185,129,0.15);
+      border: 1px solid rgba(16,185,129,0.4);
+      color: #10b981;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+
+    .btn-download:hover {
+      background: rgba(16,185,129,0.25);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(16,185,129,0.15);
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .stat-chip .stat-val { color: var(--text-primary); font-weight: 700; }
+
+    /* ── Toast notifications ── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .toast {
+      background: rgba(20,27,45,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 360px;
+      border: 1px solid var(--border);
+      transform: translateX(120%);
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .toast.show { transform: translateX(0); }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error   { border-left: 3px solid var(--danger); }
+    .toast.warning { border-left: 3px solid var(--warning); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+  </style>
+</head>
+<body>
+
+<!-- Toast notifications -->
+<div id="toast-container" aria-live="assertive"></div>
+
+<svg style="position: absolute; width: 0; height: 0;">
+  <defs>
+    <linearGradient id="progress-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="page-wrapper">
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🎭</div>
+      <div class="logo-text">
+        <div class="logo-title">FaceSwap Studio</div>
+        <div class="logo-sub">Photo · Video · Live Webcam</div>
+      </div>
+    </div>
+    <div id="status-badge" class="status-badge">
+      <div class="status-dot"></div>
+      <span id="status-text">Checking models…</span>
+    </div>
+  </header>
+
+  <!-- Model alert -->
+  <div id="model-alert" class="model-alert">
+    ⚠️ <strong>INSwapper model not found.</strong><br/>
+    Please wait for the automatic background downloader to finish fetching <code>inswapper_128.onnx</code>. Refresh this page when the status badge shows <strong>Models Ready</strong>.
+    <br/><small style="opacity:0.7">Target Path: <code id="model-path"></code></small>
+  </div>
+
+  <div class="app-grid">
+    <!-- Sidebar: Source face upload (shared) -->
+    <div class="card" id="source-card">
+      <div class="card-title">
+        🧑 Source Face
+        <span class="badge">FACE TO TRANSFER</span>
+      </div>
+      <div class="upload-zone" id="source-zone" tabindex="0" role="button" aria-label="Upload source face image">
+        <input type="file" id="source-input" accept="image/jpeg,image/png,image/webp" aria-label="Source image file input" />
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-label">Drag & drop or click</div>
+        <div class="upload-hint">JPG, PNG, WebP · The face you want to use</div>
+      </div>
+      
+      <div class="section-sep" style="height:1px; background:var(--border); margin:20px 0;"></div>
+      
+      <div class="control-group">
+        <label class="control-label" for="source-face-index">
+          Source Face Index
+          <span class="tooltip-icon" title="If source image has multiple faces, pick which one to use (0 = first detected).">ℹ️</span>
+        </label>
+        <input type="number" id="source-face-index" value="0" min="0" max="20" aria-label="Source face index" />
+      </div>
+    </div>
+
+    <!-- Main Section: Tabs for Target Mode -->
+    <div class="card tabs-card">
+      <div class="tabs-header">
+        <button class="tab-btn active" data-tab="photo">📷 Photo Swap</button>
+        <button class="tab-btn" data-tab="batch">📁 Batch Swap</button>
+        <button class="tab-btn" data-tab="video">🎥 Video Swap</button>
+        <button class="tab-btn" data-tab="webcam">💻 Live Webcam</button>
+      </div>
+
+      <!-- Tab Content: Photo Swap -->
+      <div class="tab-panel active" id="tab-photo">
+        <div style="display:grid; grid-template-columns:1fr; gap:20px;">
+          <div class="control-group">
+            <label class="control-label">Target Image</label>
+            <div class="upload-zone" id="target-photo-zone" tabindex="0" role="button" aria-label="Upload target image">
+              <input type="file" id="target-photo-input" accept="image/jpeg,image/png,image/webp" aria-label="Target photo file input" />
+              <div class="upload-icon">📷</div>
+              <div class="upload-label">Drag & drop or click target photo</div>
+              <div class="upload-hint">The photo that will receive the face</div>
+            </div>
+          </div>
+          
+          <!-- Shared Swap Options (Only relevant for photo/video) -->
+          <div class="controls-grid" style="margin-top:10px;">
+            <div class="control-group">
+              <label class="control-label" for="strength-slider">
+                Swap Blend Strength
+              </label>
+              <div class="slider-track">
+                <input type="range" id="strength-slider" min="0" max="100" value="100" step="1" aria-label="Swap strength" />
+                <span class="slider-value" id="strength-value">100%</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label" for="face-order-select">
+                Face Processing Order
+              </label>
+              <select id="face-order-select" aria-label="Face processing order">
+                <option value="left-right">Left → Right</option>
+                <option value="right-left">Right → Left</option>
+                <option value="large-small">Largest → Smallest</option>
+                <option value="small-large">Smallest → Largest</option>
+              </select>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label" for="gender-select">
+                Gender Filter
+              </label>
+              <select id="gender-select" aria-label="Gender filter">
+                <option value="all">All Faces</option>
+                <option value="male">Male Only</option>
+                <option value="female">Female Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="control-group" id="target-index-group" style="display:none">
+            <div class="control-label">
+              Target Face Selection
+              <span class="tooltip-icon" title="Click to select specific faces. Unselect all = swap every face.">ℹ️</span>
+            </div>
+            <div class="face-tags" id="face-tags-container"></div>
+            <div class="face-tags-hint" id="face-tags-hint">Select faces to swap, or leave all unselected to swap every face.</div>
+          </div>
+
+          <button class="btn-swap" id="swap-photo-btn" disabled>
+            🔄 Swap Photo Frame
+          </button>
+        </div>
+
+        <!-- Result container -->
+        <div class="result-section" id="result-photo-section">
+          <div class="result-header">
+            <div class="result-title">✨ Photo Result</div>
+            <div class="result-meta" id="result-photo-meta"></div>
+          </div>
+          <div class="comparison-container">
+            <div class="comparison-grid">
+              <div class="comparison-panel">
+                <img id="before-photo-img" src="" alt="Original target image" />
+                <div class="comparison-label">Before</div>
+              </div>
+              <div class="comparison-panel">
+                <img id="after-photo-img" src="" alt="Swapped face result" />
+                <div class="comparison-label">After</div>
+              </div>
+            </div>
+            <div class="comparison-divider"></div>
+          </div>
+          <div class="stats-row" id="photo-stats-row"></div>
+          <div style="margin-top: 16px;">
+            <a id="download-photo-btn" class="btn-download" href="#" download="faceswap_result.jpg">
+              ⬇️ Download Result
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Batch Swap -->
+      <div class="tab-panel" id="tab-batch">
+        <div style="display:grid; grid-template-columns:1fr; gap:20px;">
+          <div class="control-group">
+            <label class="control-label">Target Images (Max 20)</label>
+            <div class="upload-zone" id="target-batch-zone" tabindex="0" role="button" aria-label="Upload multiple target images">
+              <input type="file" id="target-batch-input" accept="image/jpeg,image/png,image/webp" multiple aria-label="Target batch files input" />
+              <div class="upload-icon">📁</div>
+              <div class="upload-label">Drag &amp; drop or click target images</div>
+              <div class="upload-hint">Upload up to 20 images together for batch swapping</div>
+            </div>
+          </div>
+          
+          <!-- Uploaded files grid view -->
+          <div class="control-group" id="batch-upload-preview-group" style="display:none;">
+            <div class="control-label" id="batch-upload-count-label">Uploaded Files (0)</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:10px; max-height:240px; overflow-y:auto; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:var(--radius-sm);" id="batch-upload-grid"></div>
+            <div style="margin-top:6px;"><button class="clear-btn" id="clear-batch-btn">✕ Clear All Images</button></div>
+          </div>
+          
+          <!-- Batch settings -->
+          <div class="controls-grid" style="margin-top:10px;">
+            <div class="control-group">
+              <label class="control-label" for="b-strength-slider">Swap Blend Strength</label>
+              <div class="slider-track">
+                <input type="range" id="b-strength-slider" min="0" max="100" value="100" step="1" />
+                <span class="slider-value" id="b-strength-value">100%</span>
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="b-face-order-select">Face Processing Order</label>
+              <select id="b-face-order-select">
+                <option value="left-right">Left → Right</option>
+                <option value="right-left">Right → Left</option>
+                <option value="large-small">Largest → Smallest</option>
+                <option value="small-large">Smallest → Largest</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="b-gender-select">Gender Filter</label>
+              <select id="b-gender-select">
+                <option value="all">All Faces</option>
+                <option value="male">Male Only</option>
+                <option value="female">Female Only</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn-swap" id="swap-batch-btn" disabled>
+            📁 Swap Batch Images
+          </button>
+          
+          <!-- Batch processing progress bar -->
+          <div class="video-processing-card" id="batch-processing-card" style="display:none; flex-direction:column; gap:16px;">
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:700;">
+              <span id="batch-progress-text">Processing: 0 / 0 images</span>
+              <span id="batch-speed-text">Speed: 0 FPS</span>
+            </div>
+            <div style="width:100%; height:8px; background:rgba(255,255,255,0.05); border-radius:100px; overflow:hidden; border:1px solid var(--border);">
+              <div id="batch-progress-bar-fill" style="width:0%; height:100%; background:var(--accent-grad); border-radius:100px; transition:width 0.25s;"></div>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); text-align:center;">Performing high-definition swaps in background thread...</div>
+          </div>
+          
+          <!-- Batch Results Section -->
+          <div class="result-section" id="result-batch-section">
+            <div class="result-header">
+              <div class="result-title">✨ Batch Results</div>
+            </div>
+            
+            <!-- Grid of completed swapped thumbnails -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:16px; margin-bottom:20px;" id="batch-results-grid"></div>
+            
+            <div style="margin-top: 16px; display:flex; gap:12px;">
+              <a id="download-batch-zip-btn" class="btn-download" href="#">
+                📦 Download All as ZIP
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Video Swap -->
+      <div class="tab-panel" id="tab-video">
+        <div style="display:grid; grid-template-columns:1fr; gap:20px;">
+          <div class="control-group">
+            <label class="control-label">Target Video</label>
+            <div class="upload-zone" id="target-video-zone" tabindex="0" role="button" aria-label="Upload target video">
+              <input type="file" id="target-video-input" accept="video/mp4,video/quicktime,video/x-msvideo,image/gif" aria-label="Target video file input" />
+              <div class="upload-icon">🎥</div>
+              <div class="upload-label">Drag & drop or click target video or GIF</div>
+              <div class="upload-hint">MP4, MOV, AVI, GIF · Video/GIF to swap faces in</div>
+            </div>
+          </div>
+
+          <!-- Video Processing controls -->
+          <div class="controls-grid" id="video-controls-block">
+            <div class="control-group">
+              <label class="control-label" for="v-strength-slider">Swap Strength</label>
+              <div class="slider-track">
+                <input type="range" id="v-strength-slider" min="0" max="100" value="100" step="1" aria-label="Swap strength" />
+                <span class="slider-value" id="v-strength-value">100%</span>
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="v-face-order-select">Processing Order</label>
+              <select id="v-face-order-select">
+                <option value="left-right">Left → Right</option>
+                <option value="right-left">Right → Left</option>
+                <option value="large-small">Largest → Smallest</option>
+                <option value="small-large">Smallest → Largest</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="v-gender-select">Gender Filter</label>
+              <select id="v-gender-select">
+                <option value="all">All Faces</option>
+                <option value="male">Male Only</option>
+                <option value="female">Female Only</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn-swap" id="swap-video-btn" disabled>
+            🎬 Swap Video File
+          </button>
+          
+          <!-- Live progress card -->
+          <div class="video-processing-card" id="video-processing-card">
+            <div class="progress-circle-container">
+              <svg width="120" height="120">
+                <circle class="progress-circle-bg" cx="60" cy="60" r="45"></circle>
+                <circle class="progress-circle-bar" id="progress-bar-circle" cx="60" cy="60" r="45"></circle>
+              </svg>
+              <div class="progress-text-val" id="progress-percent">0%</div>
+            </div>
+            
+            <div class="live-preview-box">
+              <div class="live-preview-label">Live Swap Frame</div>
+              <img id="video-frame-preview" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Video frame swap preview" />
+            </div>
+
+            <div class="processing-details">
+              <div class="proc-title" id="proc-status-text">Processing Video frames…</div>
+              <div class="proc-sub" id="proc-details-text">Frame: 0 / 0 · Speed: 0 FPS · ETA: Calculating…</div>
+            </div>
+          </div>
+
+          <!-- Video Result Section -->
+          <div class="result-section" id="result-video-section">
+            <div class="result-header">
+              <div class="result-title">✨ Video Result</div>
+            </div>
+            <div class="comparison-container" id="video-output-container" style="width:100%; display:flex; justify-content:center; align-items:center; background:#000; border-radius:var(--radius-lg); min-height:240px;">
+              <video id="video-output-player" controls style="width:100%; height:380px; background:#000; border-radius:var(--radius-lg);"></video>
+            </div>
+            <div class="stats-row" id="video-stats-row"></div>
+            <div style="margin-top:16px;">
+              <a id="download-video-btn" class="btn-download" href="#">
+                ⬇️ Download Processed Video
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Live Webcam Swap -->
+      <div class="tab-panel" id="tab-webcam">
+        <div class="webcam-container">
+          <div class="webcam-canvas-wrapper">
+            <canvas id="webcam-display-canvas"></canvas>
+            <div class="webcam-stats" id="webcam-stats-badge">Webcam: Active</div>
+            <div class="webcam-placeholder" id="webcam-placeholder">
+              <div class="ico">🎥</div>
+              <div>Start your webcam feed to perform real-time face swapping.</div>
+            </div>
+          </div>
+
+          <!-- Webcam controls -->
+          <div class="controls-grid" style="width:100%; max-width:580px; margin-top:10px;">
+            <div class="control-group">
+              <label class="control-label" for="web-strength-slider">Swap Strength</label>
+              <div class="slider-track">
+                <input type="range" id="web-strength-slider" min="0" max="100" value="100" step="1" aria-label="Webcam strength" />
+                <span class="slider-value" id="web-strength-value">100%</span>
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="web-gender-select">Gender Filter</label>
+              <select id="web-gender-select">
+                <option value="all">All Faces</option>
+                <option value="male">Male Only</option>
+                <option value="female">Female Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px;">
+            <button class="webcam-btn start" id="start-webcam-btn" disabled>
+              🟢 Start Webcam Swapper
+            </button>
+            <button class="webcam-btn stop" id="stop-webcam-btn" style="display:none">
+              🔴 Stop Webcam Swapper
+            </button>
+            <button class="webcam-btn start" id="capture-webcam-btn" style="display:none; background:rgba(6,182,212,0.15); border:1px solid rgba(6,182,212,0.4); color:#06b6d4;">
+              📸 Take Snapshot
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden webcam resources -->
+<video id="webcam-video" style="display:none;" autoplay playsinline muted></video>
+<canvas id="webcam-hidden-canvas" style="display:none;"></canvas>
+
+<script>
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     State Definition
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  const state = {
+    sourceB64: null,
+    sourceFilename: '',
+    
+    // Photo target
+    targetPhotoB64: null,
+    targetPhotoFilename: '',
+    targetPhotoFaces: [],
+    selectedPhotoFaceIndices: new Set(),
+    
+    // Video target
+    targetVideoFile: null,
+    targetVideoFilename: '',
+    videoProcessingTaskId: null,
+    videoProcessingInterval: null,
+    
+    // Batch target
+    targetBatchFiles: [],
+    batchProcessingTaskId: null,
+    batchProcessingInterval: null,
+    
+    // Webcam state
+    webcamStream: null,
+    webcamActive: false,
+    webcamProcessing: false,
+    webcamLastTime: null,
+    webcamFrameCount: 0,
+    webcamFps: 0,
+    webcamRequestRef: null,
+    
+    modelsReady: false,
+  };
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Toasts & Notifications
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function toast(msg, type = 'success', duration = 4000) {
+    const icons = { success: '✅', error: '❌', warning: '⚠️' };
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    requestAnimationFrame(() => { requestAnimationFrame(() => { el.classList.add('show'); }); });
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 400);
+    }, duration);
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Tabs Navigation
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function initTabs() {
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        
+        btn.classList.add('active');
+        const activeTabId = `tab-${btn.dataset.tab}`;
+        document.getElementById(activeTabId).classList.add('active');
+        
+        // Stop webcam swap if switching tabs
+        if (btn.dataset.tab !== 'webcam' && state.webcamActive) {
+          stopWebcamSwap();
+        }
+      });
+    });
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Model Status Polling
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  async function checkModelStatus() {
+    try {
+      const res = await fetch('/api/models/status');
+      const data = await res.json();
+
+      const badge = document.getElementById('status-badge');
+      const statusText = document.getElementById('status-text');
+
+      if (data.all_ready) {
+        badge.className = 'status-badge ready';
+        statusText.textContent = 'Models Ready';
+        state.modelsReady = true;
+        document.getElementById('model-alert').classList.remove('visible');
+      } else if (data.analyser && !data.inswapper) {
+        badge.className = 'status-badge warning';
+        statusText.textContent = 'INSwapper Missing';
+        document.getElementById('model-alert').classList.add('visible');
+        document.getElementById('model-path').textContent = data.inswapper_path;
+        // Retry status checking in 3 seconds
+        setTimeout(checkModelStatus, 3000);
+      } else {
+        badge.className = 'status-badge warning';
+        statusText.textContent = 'Loading models…';
+        setTimeout(checkModelStatus, 3000);
+      }
+    } catch (e) {
+      const badge = document.getElementById('status-badge');
+      badge.className = 'status-badge error';
+      document.getElementById('status-text').textContent = 'Server error';
+    }
+    updateSwapButtonStates();
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Helper File Converters
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     API Requests
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  async function detectFacesApi(b64) {
+    try {
+      const res = await fetch('/api/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: b64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || 'Face detection error', 'error');
+        return null;
+      }
+      return data.faces || [];
+    } catch (e) {
+      toast('Network error during face detection', 'error');
+      return null;
+    }
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Source Image Management
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  async function handleSourceFile(file) {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast('Source face image too large (max 20 MB)', 'warning');
+      return;
+    }
+
+    const zone = document.getElementById('source-zone');
+    zone.innerHTML = `<div class="upload-preview"><div class="face-count" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--text-secondary)">🔍 Analysing face…</div></div>`;
+    
+    try {
+      const b64 = await fileToBase64(file);
+      state.sourceB64 = b64;
+      state.sourceFilename = file.name;
+      
+      const faces = await detectFacesApi(b64);
+      
+      zone.classList.add('has-image');
+      const countLabel = faces !== null ? `👤 ${faces.length} face${faces.length !== 1 ? 's' : ''} detected` : '⚠️ Analysis failed';
+      
+      zone.innerHTML = `
+        <div class="upload-preview">
+          <img id="preview-img-source" src="${b64}" alt="Source Face" />
+          <canvas id="canvas-source"></canvas>
+          <div class="preview-overlay">
+            <div class="face-count" style="color:#10b981">${countLabel}</div>
+            <button class="clear-btn" id="clear-source-btn">✕ Clear</button>
+          </div>
+        </div>
+      `;
+      
+      if (faces && faces.length > 0) {
+        drawFaceBoxes('source', b64, faces);
+        if (faces.length > 1) {
+          toast(`Multiple source faces detected. Selecting Index 0. You can choose a different face index in the sidebar.`, 'warning');
+        }
+      }
+      
+      document.getElementById('clear-source-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearSourceFace();
+      });
+      
+    } catch (err) {
+      toast('Failed to process source image file', 'error');
+      clearSourceFace();
+    }
+    updateSwapButtonStates();
+  }
+
+  function clearSourceFace() {
+    state.sourceB64 = null;
+    state.sourceFilename = '';
+    const zone = document.getElementById('source-zone');
+    zone.classList.remove('has-image');
+    zone.innerHTML = `
+      <input type="file" id="source-input" accept="image/jpeg,image/png,image/webp" aria-label="Source image file input" />
+      <div class="upload-icon">🖼️</div>
+      <div class="upload-label">Drag & drop or click</div>
+      <div class="upload-hint">JPG, PNG, WebP · The face you want to use</div>
+    `;
+    attachSourceZoneListeners();
+    updateSwapButtonStates();
+  }
+
+  function drawFaceBoxes(prefix, b64, faces) {
+    const img = document.getElementById(`preview-img-${prefix}`);
+    const canvas = document.getElementById(`canvas-${prefix}`);
+    if (!img || !canvas) return;
+
+    const draw = () => {
+      canvas.width  = img.naturalWidth  || img.offsetWidth;
+      canvas.height = img.naturalHeight || img.offsetHeight;
+      canvas.style.width  = '100%';
+      canvas.style.height = '100%';
+
+      const ctx = canvas.getContext('2d');
+      const scaleX = canvas.width / img.naturalWidth;
+      const scaleY = canvas.height / img.naturalHeight;
+
+      faces.forEach((face, i) => {
+        const [x1, y1, x2, y2] = face.bbox;
+        const w = (x2 - x1) * scaleX;
+        const h = (y2 - y1) * scaleY;
+        const sx = x1 * scaleX;
+        const sy = y1 * scaleY;
+
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.95)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(sx, sy, w, h);
+
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.85)';
+        ctx.fillRect(sx, sy - 22, w < 80 ? 80 : w, 22);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.fillText(`Idx #${i} (${face.gender})`, sx + 6, sy - 6);
+      });
+    };
+
+    if (img.complete) draw();
+    else img.addEventListener('load', draw, { once: true });
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Photo Target Management & Face Swap
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  async function handleTargetPhotoFile(file) {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast('Target image too large (max 20 MB)', 'warning');
+      return;
+    }
+
+    const zone = document.getElementById('target-photo-zone');
+    zone.innerHTML = `<div class="upload-preview"><div class="face-count" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--text-secondary)">🔍 Detecting faces…</div></div>`;
+    
+    try {
+      const b64 = await fileToBase64(file);
+      state.targetPhotoB64 = b64;
+      state.targetPhotoFilename = file.name;
+      
+      const faces = await detectFacesApi(b64);
+      state.targetPhotoFaces = faces || [];
+      state.selectedPhotoFaceIndices.clear();
+      
+      zone.classList.add('has-image');
+      const countLabel = faces !== null ? `👤 ${faces.length} face${faces.length !== 1 ? 's' : ''} detected` : '⚠️ Face detection failed';
+      
+      zone.innerHTML = `
+        <div class="upload-preview">
+          <img id="preview-img-target" src="${b64}" alt="Target Photo" />
+          <canvas id="canvas-target"></canvas>
+          <div class="preview-overlay">
+            <div class="face-count" style="color:#10b981">${countLabel}</div>
+            <button class="clear-btn" id="clear-target-photo-btn">✕ Clear</button>
+          </div>
+        </div>
+      `;
+      
+      if (faces && faces.length > 0) {
+        drawFaceBoxes('target', b64, faces);
+        buildTargetFaceTags(faces);
+      } else {
+        hideTargetFaceTags();
+      }
+      
+      document.getElementById('clear-target-photo-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearTargetPhoto();
+      });
+      
+    } catch (err) {
+      toast('Failed to process target photo file', 'error');
+      clearTargetPhoto();
+    }
+    updateSwapButtonStates();
+  }
+
+  function clearTargetPhoto() {
+    state.targetPhotoB64 = null;
+    state.targetPhotoFilename = '';
+    state.targetPhotoFaces = [];
+    state.selectedPhotoFaceIndices.clear();
+    hideTargetFaceTags();
+    
+    const zone = document.getElementById('target-photo-zone');
+    zone.classList.remove('has-image');
+    zone.innerHTML = `
+      <input type="file" id="target-photo-input" accept="image/jpeg,image/png,image/webp" aria-label="Target photo file input" />
+      <div class="upload-icon">📷</div>
+      <div class="upload-label">Drag & drop or click target photo</div>
+      <div class="upload-hint">The photo that will receive the face</div>
+    `;
+    attachTargetPhotoZoneListeners();
+    document.getElementById('result-photo-section').classList.remove('visible');
+    updateSwapButtonStates();
+  }
+
+  function buildTargetFaceTags(faces) {
+    const group = document.getElementById('target-index-group');
+    const container = document.getElementById('face-tags-container');
+    
+    if (!faces || faces.length <= 1) {
+      group.style.display = 'none';
+      return;
+    }
+    
+    group.style.display = 'block';
+    container.innerHTML = '';
+    
+    faces.forEach((face, i) => {
+      const tag = document.createElement('button');
+      tag.className = 'face-tag';
+      tag.textContent = `Face #${i} (${face.gender}, ~${face.age}yr)`;
+      tag.dataset.index = i;
+      tag.setAttribute('aria-label', `Toggle face ${i}`);
+      
+      tag.addEventListener('click', () => {
+        if (state.selectedPhotoFaceIndices.has(i)) {
+          state.selectedPhotoFaceIndices.delete(i);
+          tag.classList.remove('selected');
+        } else {
+          state.selectedPhotoFaceIndices.add(i);
+          tag.classList.add('selected');
+        }
+        const hint = document.getElementById('face-tags-hint');
+        hint.textContent = state.selectedPhotoFaceIndices.size === 0
+          ? 'No specific faces selected — all detected faces will be swapped.'
+          : `${state.selectedPhotoFaceIndices.size} face(s) selected for swapping.`;
+      });
+      container.appendChild(tag);
+    });
+  }
+
+  function hideTargetFaceTags() {
+    document.getElementById('target-index-group').style.display = 'none';
+    document.getElementById('face-tags-container').innerHTML = '';
+  }
+
+  async function performPhotoSwap() {
+    if (!state.sourceB64 || !state.targetPhotoB64) return;
+    
+    const strength = parseInt(document.getElementById('strength-slider').value) / 100;
+    const faceOrder = document.getElementById('face-order-select').value;
+    const genderFilter = document.getElementById('gender-select').value;
+    const sourceFaceIdx = parseInt(document.getElementById('source-face-index').value) || 0;
+    const targetIndices = [...state.selectedPhotoFaceIndices];
+
+    const btn = document.getElementById('swap-photo-btn');
+    btn.disabled = true;
+    btn.classList.add('processing');
+    btn.textContent = '⏳ Processing Swap…';
+
+    try {
+      const res = await fetch('/api/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_image: state.sourceB64,
+          target_image: state.targetPhotoB64,
+          source_face_index: sourceFaceIdx,
+          target_face_indices: targetIndices,
+          gender_filter: genderFilter,
+          face_order: faceOrder,
+          strength: strength
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || 'Photo swap failed', 'error');
+        return;
+      }
+
+      showPhotoResult(data);
+      toast(`✨ Face swap successfully applied onto target image!`, 'success');
+      
+    } catch (e) {
+      toast('Network error during photo face swapping. Make sure the server is online.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('processing');
+      btn.textContent = '🔄 Swap Photo Frame';
+    }
+  }
+
+  function showPhotoResult(data) {
+    const section = document.getElementById('result-photo-section');
+    section.classList.add('visible');
+
+    document.getElementById('before-photo-img').src = state.targetPhotoB64;
+    document.getElementById('after-photo-img').src = data.result_image;
+
+    // Set download href using blob to ensure 100% Android Chrome compatibility
+    const dlBtn = document.getElementById('download-photo-btn');
+    const blob = b64ToBlob(data.result_image, 'image/jpeg');
+    const blobUrl = URL.createObjectURL(blob);
+    dlBtn.href = blobUrl;
+    dlBtn.download = `swapped_${state.targetPhotoFilename || 'result.jpg'}`;
+
+    // Update stats
+    document.getElementById('photo-stats-row').innerHTML = `
+      <div class="stat-chip">Faces Swapped: <span class="stat-val">${data.faces_swapped}</span></div>
+      <div class="stat-chip">Source Faces: <span class="stat-val">${data.source_faces_found}</span></div>
+      <div class="stat-chip">Target Faces: <span class="stat-val">${data.target_faces_found}</span></div>
+      <div class="stat-chip">Device: <span class="stat-val">CPU · INSwapper</span></div>
+    `;
+
+    setTimeout(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Video Target Management & Task Polling
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function handleTargetVideoFile(file) {
+    if (!file) return;
+    const maxSize = 250 * 1024 * 1024; // 250MB
+    if (file.size > maxSize) {
+      toast('Target video is too large (max 250 MB). Please compress it.', 'warning');
+      return;
+    }
+
+    state.targetVideoFile = file;
+    state.targetVideoFilename = file.name;
+
+    const zone = document.getElementById('target-video-zone');
+    zone.classList.add('has-image');
+    
+    // Build preview element
+    const fileURL = URL.createObjectURL(file);
+    const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+    const mediaTag = isGif
+      ? `<img id="preview-video-element" src="${fileURL}" style="max-height: 360px; object-fit: contain; border-radius: var(--radius-sm);" alt="GIF Preview" />`
+      : `<video id="preview-video-element" src="${fileURL}" controls></video>`;
+      
+    zone.innerHTML = `
+      <div class="upload-preview">
+        ${mediaTag}
+        <div class="preview-overlay">
+          <div class="face-count" style="color:#06b6d4">📂 ${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)</div>
+          <button class="clear-btn" id="clear-target-video-btn">✕ Clear</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('clear-target-video-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearTargetVideo();
+    });
+    
+    document.getElementById('result-video-section').classList.remove('visible');
+    updateSwapButtonStates();
+  }
+
+  function clearTargetVideo() {
+    state.targetVideoFile = null;
+    state.targetVideoFilename = '';
+    
+    // Stop any active processing polls
+    if (state.videoProcessingInterval) {
+      clearInterval(state.videoProcessingInterval);
+      state.videoProcessingInterval = null;
+    }
+
+    const zone = document.getElementById('target-video-zone');
+    zone.classList.remove('has-image');
+    zone.innerHTML = `
+      <input type="file" id="target-video-input" accept="video/mp4,video/quicktime,video/x-msvideo,image/gif" aria-label="Target video file input" />
+      <div class="upload-icon">🎥</div>
+      <div class="upload-label">Drag & drop or click target video or GIF</div>
+      <div class="upload-hint">MP4, MOV, AVI, GIF · Video/GIF to swap faces in</div>
+    `;
+    
+    attachTargetVideoZoneListeners();
+    document.getElementById('video-processing-card').classList.remove('active');
+    document.getElementById('result-video-section').classList.remove('visible');
+    document.getElementById('swap-video-btn').disabled = false;
+    document.getElementById('video-controls-block').style.opacity = '1';
+    document.getElementById('video-controls-block').style.pointerEvents = 'all';
+    
+    updateSwapButtonStates();
+  }
+
+  async function performVideoSwap() {
+    if (!state.sourceB64 || !state.targetVideoFile) return;
+
+    // Convert source base64 to File blob
+    const res = await fetch(state.sourceB64);
+    const blob = await res.blob();
+    const sourceFile = new File([blob], state.sourceFilename || "source.jpg", { type: "image/jpeg" });
+
+    const strength = parseInt(document.getElementById('v-strength-slider').value) / 100;
+    const faceOrder = document.getElementById('v-face-order-select').value;
+    const genderFilter = document.getElementById('v-gender-select').value;
+    const sourceFaceIdx = parseInt(document.getElementById('source-face-index').value) || 0;
+
+    const fd = new FormData();
+    fd.append("source_image", sourceFile);
+    fd.append("target_video", state.targetVideoFile);
+    fd.append("strength", strength);
+    fd.append("face_order", faceOrder);
+    fd.append("gender_filter", genderFilter);
+    fd.append("source_face_index", sourceFaceIdx);
+
+    const btn = document.getElementById('swap-video-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Uploading & starting task…';
+    
+    // Hide controls
+    document.getElementById('video-controls-block').style.opacity = '0.4';
+    document.getElementById('video-controls-block').style.pointerEvents = 'none';
+
+    try {
+      const resp = await fetch('/api/swap_video', {
+        method: 'POST',
+        body: fd
+      });
+      
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast(data.error || 'Failed to start video processing', 'error');
+        btn.disabled = false;
+        btn.textContent = '🎬 Swap Video File';
+        document.getElementById('video-controls-block').style.opacity = '1';
+        document.getElementById('video-controls-block').style.pointerEvents = 'all';
+        return;
+      }
+
+      state.videoProcessingTaskId = data.task_id;
+      startVideoProgressPolling(data.task_id);
+      toast('🎬 Background face swapping task initialized!', 'success');
+
+    } catch (e) {
+      toast('Server connection failed during upload', 'error');
+      btn.disabled = false;
+      btn.textContent = '🎬 Swap Video File';
+      document.getElementById('video-controls-block').style.opacity = '1';
+      document.getElementById('video-controls-block').style.pointerEvents = 'all';
+    }
+  }
+
+  function startVideoProgressPolling(taskId) {
+    const card = document.getElementById('video-processing-card');
+    card.classList.add('active');
+    
+    document.getElementById('result-video-section').classList.remove('visible');
+
+    const progressBar = document.getElementById('progress-bar-circle');
+    const percentText = document.getElementById('progress-percent');
+    const statusText = document.getElementById('proc-status-text');
+    const detailsText = document.getElementById('proc-details-text');
+    const previewImg = document.getElementById('video-frame-preview');
+
+    state.videoProcessingInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/video_status/${taskId}`);
+        if (!res.ok) return;
+        const task = await res.json();
+
+        if (task.status === 'processing') {
+          statusText.textContent = 'AI Processing Frames…';
+          const pct = Math.round(task.progress * 100);
+          percentText.textContent = `${pct}%`;
+          
+          // Animate progress circle dashoffset (stroke-dasharray: 282.6)
+          const offset = 282.6 - (282.6 * task.progress);
+          progressBar.style.strokeDashoffset = offset;
+
+          detailsText.textContent = `Frame: ${task.current_frame} / ${task.total_frames} · Speed: ${task.fps} FPS · ETA: ${task.eta}s`;
+          
+          if (task.preview) {
+            previewImg.src = task.preview;
+          }
+        } 
+        else if (task.status === 'merging_audio') {
+          statusText.textContent = 'Merging Original Audio…';
+          percentText.textContent = '95%';
+          progressBar.style.strokeDashoffset = 14;
+          detailsText.textContent = `Injecting high-quality AAC soundtrack...`;
+        } 
+        else if (task.status === 'completed') {
+          clearInterval(state.videoProcessingInterval);
+          state.videoProcessingInterval = null;
+
+          card.classList.remove('active');
+          showVideoResult(taskId, task);
+          toast('✨ Video face swap completed successfully!', 'success');
+          
+          // Restore button
+          const btn = document.getElementById('swap-video-btn');
+          btn.disabled = false;
+          btn.textContent = '🎬 Swap Video File';
+          document.getElementById('video-controls-block').style.opacity = '1';
+          document.getElementById('video-controls-block').style.pointerEvents = 'all';
+        } 
+        else if (task.status === 'failed') {
+          clearInterval(state.videoProcessingInterval);
+          state.videoProcessingInterval = null;
+
+          card.classList.remove('active');
+          toast(`Processing task failed: ${task.error}`, 'error', 7000);
+          
+          const btn = document.getElementById('swap-video-btn');
+          btn.disabled = false;
+          btn.textContent = '🎬 Swap Video File';
+          document.getElementById('video-controls-block').style.opacity = '1';
+          document.getElementById('video-controls-block').style.pointerEvents = 'all';
+        }
+      } catch (err) {
+        console.error('Error polling status', err);
+      }
+    }, 1000);
+  }
+
+  function showVideoResult(taskId, task) {
+    const section = document.getElementById('result-video-section');
+    section.classList.add('visible');
+
+    const container = document.getElementById('video-output-container');
+    const dlURL = `/api/video_download/${taskId}`;
+    const isGif = state.targetVideoFilename.toLowerCase().endsWith('.gif');
+    
+    if (isGif) {
+      container.innerHTML = `<img id="video-output-player" src="${dlURL}" style="max-height: 380px; object-fit: contain; border-radius: var(--radius-lg);" alt="GIF Result" />`;
+    } else {
+      container.innerHTML = `<video id="video-output-player" src="${dlURL}" controls style="width:100%; height:380px; background:#000; border-radius:var(--radius-lg);"></video>`;
+      const player = document.getElementById('video-output-player');
+      player.load();
+    }
+
+    document.getElementById('download-video-btn').href = dlURL;
+    document.getElementById('download-video-btn').download = isGif ? 'swapped_result.gif' : 'swapped_result.mp4';
+    document.getElementById('download-video-btn').innerHTML = isGif ? '⬇️ Download Swapped GIF' : '⬇️ Download Processed Video';
+
+    document.getElementById('video-stats-row').innerHTML = `
+      <div class="stat-chip">Frames Swapped: <span class="stat-val">${task.total_frames}</span></div>
+      <div class="stat-chip">Inference Frame Rate: <span class="stat-val">${task.fps} FPS</span></div>
+      <div class="stat-chip">Format: <span class="stat-val">${isGif ? 'GIF (Animated)' : 'MP4 Video'}</span></div>
+      <div class="stat-chip">Audio Re-synced: <span class="stat-val">${task.has_audio ? 'Yes ✓' : 'Silent 🔕'}</span></div>
+    `;
+
+    setTimeout(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Batch Target Management & Polling
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function handleTargetBatchFiles(files) {
+    if (!files || files.length === 0) return;
+    
+    // Convert to Array and cap at 20 files
+    let fileList = Array.from(files).filter(f => f.type.startsWith('image/'));
+    
+    if (state.targetBatchFiles.length + fileList.length > 20) {
+      toast('Batch swap limit: Maximum 20 target images allowed.', 'warning');
+      // Only take what fits
+      fileList = fileList.slice(0, 20 - state.targetBatchFiles.length);
+    }
+    
+    if (fileList.length === 0) return;
+    
+    state.targetBatchFiles = state.targetBatchFiles.concat(fileList);
+    
+    const previewGroup = document.getElementById('batch-upload-preview-group');
+    const countLabel = document.getElementById('batch-upload-count-label');
+    const grid = document.getElementById('batch-upload-grid');
+    
+    previewGroup.style.display = 'block';
+    countLabel.textContent = `Uploaded Files (${state.targetBatchFiles.length})`;
+    
+    // Render new file thumbnails
+    grid.innerHTML = '';
+    state.targetBatchFiles.forEach((file, index) => {
+      const fileUrl = URL.createObjectURL(file);
+      const thumb = document.createElement('div');
+      thumb.style.position = 'relative';
+      thumb.style.width = '80px';
+      thumb.style.height = '80px';
+      thumb.style.borderRadius = 'var(--radius-sm)';
+      thumb.style.overflow = 'hidden';
+      thumb.style.border = '1px solid var(--border)';
+      
+      thumb.innerHTML = `
+        <img src="${fileUrl}" style="width:100%; height:100%; object-fit:cover;" alt="Thumb" />
+        <button style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:16px; height:16px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center;" aria-label="Remove image">✕</button>
+      `;
+      
+      thumb.querySelector('button').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeBatchFileAt(index);
+      });
+      
+      grid.appendChild(thumb);
+    });
+    
+    document.getElementById('result-batch-section').classList.remove('visible');
+    updateSwapButtonStates();
+  }
+  
+  function removeBatchFileAt(index) {
+    state.targetBatchFiles.splice(index, 1);
+    const previewGroup = document.getElementById('batch-upload-preview-group');
+    const countLabel = document.getElementById('batch-upload-count-label');
+    const grid = document.getElementById('batch-upload-grid');
+    
+    if (state.targetBatchFiles.length === 0) {
+      clearBatch();
+      return;
+    }
+    
+    countLabel.textContent = `Uploaded Files (${state.targetBatchFiles.length})`;
+    grid.innerHTML = '';
+    state.targetBatchFiles.forEach((file, idx) => {
+      const fileUrl = URL.createObjectURL(file);
+      const thumb = document.createElement('div');
+      thumb.style.position = 'relative';
+      thumb.style.width = '80px';
+      thumb.style.height = '80px';
+      thumb.style.borderRadius = 'var(--radius-sm)';
+      thumb.style.overflow = 'hidden';
+      thumb.style.border = '1px solid var(--border)';
+      
+      thumb.innerHTML = `
+        <img src="${fileUrl}" style="width:100%; height:100%; object-fit:cover;" alt="Thumb" />
+        <button style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:16px; height:16px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center;" aria-label="Remove image">✕</button>
+      `;
+      
+      thumb.querySelector('button').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeBatchFileAt(idx);
+      });
+      
+      grid.appendChild(thumb);
+    });
+    
+    updateSwapButtonStates();
+  }
+  
+  function clearBatch() {
+    state.targetBatchFiles = [];
+    
+    if (state.batchProcessingInterval) {
+      clearInterval(state.batchProcessingInterval);
+      state.batchProcessingInterval = null;
+    }
+    
+    const zone = document.getElementById('target-batch-zone');
+    zone.classList.remove('has-image');
+    
+    const previewGroup = document.getElementById('batch-upload-preview-group');
+    previewGroup.style.display = 'none';
+    document.getElementById('batch-upload-grid').innerHTML = '';
+    
+    document.getElementById('batch-processing-card').style.display = 'none';
+    document.getElementById('result-batch-section').classList.remove('visible');
+    document.getElementById('swap-batch-btn').disabled = false;
+    
+    // Reset inputs
+    document.getElementById('target-batch-input').value = '';
+    
+    updateSwapButtonStates();
+  }
+  
+  async function performBatchSwap() {
+    if (!state.sourceB64 || state.targetBatchFiles.length === 0) return;
+    
+    // Convert source base64 to File blob
+    const res = await fetch(state.sourceB64);
+    const blob = await res.blob();
+    const sourceFile = new File([blob], state.sourceFilename || "source.jpg", { type: "image/jpeg" });
+    
+    const strength = parseInt(document.getElementById('b-strength-slider').value) / 100;
+    const faceOrder = document.getElementById('b-face-order-select').value;
+    const genderFilter = document.getElementById('b-gender-select').value;
+    const sourceFaceIdx = parseInt(document.getElementById('source-face-index').value) || 0;
+    
+    const fd = new FormData();
+    fd.append("source_image", sourceFile);
+    state.targetBatchFiles.forEach(file => {
+      fd.append("target_images[]", file);
+    });
+    fd.append("strength", strength);
+    fd.append("face_order", faceOrder);
+    fd.append("gender_filter", genderFilter);
+    fd.append("source_face_index", sourceFaceIdx);
+    
+    const btn = document.getElementById('swap-batch-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Uploading batch images…';
+    
+    try {
+      const resp = await fetch('/api/swap_batch', {
+        method: 'POST',
+        body: fd
+      });
+      
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast(data.error || 'Failed to start batch processing', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '📁 Swap Batch Images';
+        return;
+      }
+      
+      state.batchProcessingTaskId = data.batch_id;
+      startBatchProgressPolling(data.batch_id);
+      toast('📁 Batch face swapping task started in the background!', 'success');
+      
+    } catch (e) {
+      toast('Server connection failed during batch upload', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '📁 Swap Batch Images';
+    }
+  }
+  
+  function startBatchProgressPolling(batchId) {
+    const card = document.getElementById('batch-processing-card');
+    card.style.display = 'flex';
+    
+    document.getElementById('result-batch-section').classList.remove('visible');
+    
+    const fill = document.getElementById('batch-progress-bar-fill');
+    const text = document.getElementById('batch-progress-text');
+    const speedText = document.getElementById('batch-speed-text');
+    const resultsGrid = document.getElementById('batch-results-grid');
+    
+    resultsGrid.innerHTML = '';
+    const renderedFiles = new Set();
+    
+    state.batchProcessingInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/batch_status/${batchId}`);
+        if (!res.ok) return;
+        const task = await res.json();
+        
+        if (task.status === 'processing' || task.status === 'zipping' || task.status === 'completed') {
+          const completedCount = task.completed;
+          const totalCount = task.total;
+          const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+          
+          text.textContent = task.status === 'zipping'
+            ? '📦 Compiling ZIP archive…'
+            : `Processing: ${completedCount} / ${totalCount} images (${pct}%)`;
+            
+          fill.style.width = `${pct}%`;
+          speedText.textContent = `Status: ${task.status.toUpperCase()}`;
+          
+          // Render results as they complete
+          if (task.completed_results && task.completed_results.length > 0) {
+            document.getElementById('result-batch-section').classList.add('visible');
+            
+            task.completed_results.forEach(result => {
+              if (!renderedFiles.has(result.filename)) {
+                renderedFiles.add(result.filename);
+                
+                const cardEl = document.createElement('div');
+                cardEl.className = 'glass-card';
+                cardEl.style.padding = '8px';
+                cardEl.style.display = 'flex';
+                cardEl.style.flexDirection = 'column';
+                cardEl.style.gap = '8px';
+                cardEl.style.borderRadius = 'var(--radius-md)';
+                cardEl.style.background = 'var(--bg-card)';
+                
+                cardEl.innerHTML = `
+                  <div style="position:relative; width:100%; padding-bottom:100%; border-radius:var(--radius-sm); overflow:hidden;">
+                    <img src="${result.preview}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" alt="Swapped" />
+                  </div>
+                  <div style="font-size:11px; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; text-align:center;">
+                    ${result.filename}
+                  </div>
+                  <button class="btn-download" style="padding:6px; font-size:11px; display:flex; align-items:center; justify-content:center; gap:4px; width:100%; height:auto;" aria-label="Download individual image">
+                    ⬇️ Download
+                  </button>
+                `;
+                
+                cardEl.querySelector('button').addEventListener('click', async (e) => {
+                  e.preventDefault();
+                  const btn = e.currentTarget;
+                  btn.disabled = true;
+                  btn.textContent = '⏳ ...';
+                  try {
+                    const dlRes = await fetch(`/api/batch_download_individual/${batchId}/${result.filename}`);
+                    const dlBlob = await dlRes.blob();
+                    const dlBlobUrl = URL.createObjectURL(dlBlob);
+                    const a = document.createElement('a');
+                    a.href = dlBlobUrl;
+                    a.download = result.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(dlBlobUrl);
+                  } catch (err) {
+                    toast('Failed to download image', 'error');
+                  } finally {
+                    btn.disabled = false;
+                    btn.textContent = '⬇️ Download';
+                  }
+                });
+                
+                resultsGrid.appendChild(cardEl);
+              }
+            });
+          }
+        }
+        
+        if (task.status === 'completed') {
+          clearInterval(state.batchProcessingInterval);
+          state.batchProcessingInterval = null;
+          
+          card.style.display = 'none';
+          toast('✨ Batch swap completed successfully!', 'success');
+          
+          // Show compiled ZIP download button with Blob compatibility
+          const dlZipBtn = document.getElementById('download-batch-zip-btn');
+          
+          // Re-create listener to ensure clean context
+          const newDlZipBtn = dlZipBtn.cloneNode(true);
+          dlZipBtn.parentNode.replaceChild(newDlZipBtn, dlZipBtn);
+          
+          newDlZipBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            newDlZipBtn.textContent = '⏳ Downloading ZIP…';
+            try {
+              const zipRes = await fetch(`/api/batch_download/${batchId}`);
+              const zipBlob = await zipRes.blob();
+              const zipBlobUrl = URL.createObjectURL(zipBlob);
+              const a = document.createElement('a');
+              a.href = zipBlobUrl;
+              a.download = `faceswap_batch_${batchId}.zip`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(zipBlobUrl);
+            } catch (err) {
+              toast('Failed to download compiled ZIP archive', 'error');
+            } finally {
+              newDlZipBtn.innerHTML = '📦 Download Batch ZIP Results';
+            }
+          });
+          
+          // Restore trigger button
+          const btn = document.getElementById('swap-batch-btn');
+          btn.disabled = false;
+          btn.innerHTML = '📁 Swap Batch Images';
+          
+        } else if (task.status === 'failed') {
+          clearInterval(state.batchProcessingInterval);
+          state.batchProcessingInterval = null;
+          
+          card.style.display = 'none';
+          toast(`Batch swap task failed: ${task.error}`, 'error', 7000);
+          
+          const btn = document.getElementById('swap-batch-btn');
+          btn.disabled = false;
+          btn.innerHTML = '📁 Swap Batch Images';
+        }
+        
+      } catch (err) {
+        console.error('Error polling batch status', err);
+      }
+    }, 1000);
+  }
+
+  function attachTargetBatchZoneListeners() {
+    const zone = document.getElementById('target-batch-zone');
+    const input = document.getElementById('target-batch-input');
+    
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) handleTargetBatchFiles(files);
+    });
+    zone.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT' && input) input.click();
+    });
+    if (input) {
+      input.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          handleTargetBatchFiles(e.target.files);
+        }
+      });
+    }
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Webcam Real-time Swapping Loop
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  async function startWebcamSwap() {
+    if (!state.sourceB64) {
+      toast('Please upload a source face in the sidebar first.', 'warning');
+      return;
+    }
+
+    const startBtn = document.getElementById('start-webcam-btn');
+    startBtn.disabled = true;
+    startBtn.textContent = '⏳ Loading webcam…';
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, frameRate: { ideal: 30 } },
+        audio: false
+      });
+
+      state.webcamStream = stream;
+      const video = document.getElementById('webcam-video');
+      video.srcObject = stream;
+      video.play();
+
+      state.webcamActive = true;
+      state.webcamLastTime = performance.now();
+      state.webcamFrameCount = 0;
+      state.webcamProcessing = false;
+
+      // Update UI
+      document.getElementById('webcam-placeholder').style.display = 'none';
+      document.getElementById('webcam-stats-badge').classList.add('active');
+      document.getElementById('webcam-stats-badge').textContent = 'Webcam: Starting stream…';
+      
+      startBtn.style.display = 'none';
+      const stopBtn = document.getElementById('stop-webcam-btn');
+      stopBtn.style.display = 'flex';
+      stopBtn.disabled = false;
+      document.getElementById('capture-webcam-btn').style.display = 'flex';
+
+      // Launch RAF loop
+      state.webcamRequestRef = requestAnimationFrame(captureWebcamFrameLoop);
+      toast('Live webcam swapper activated!', 'success');
+
+    } catch (e) {
+      toast('Could not access camera. Ensure permissions are allowed.', 'error');
+      startBtn.disabled = false;
+      startBtn.textContent = '🟢 Start Webcam Swapper';
+    }
+  }
+
+  function stopWebcamSwap() {
+    if (state.webcamRequestRef) {
+      cancelAnimationFrame(state.webcamRequestRef);
+      state.webcamRequestRef = null;
+    }
+
+    if (state.webcamStream) {
+      state.webcamStream.getTracks().forEach(track => track.stop());
+      state.webcamStream = null;
+    }
+
+    state.webcamActive = false;
+    state.webcamProcessing = false;
+
+    // Reset UI
+    document.getElementById('webcam-placeholder').style.display = 'flex';
+    document.getElementById('webcam-stats-badge').classList.remove('active');
+    
+    document.getElementById('stop-webcam-btn').style.display = 'none';
+    document.getElementById('capture-webcam-btn').style.display = 'none';
+    const startBtn = document.getElementById('start-webcam-btn');
+    startBtn.style.display = 'flex';
+    startBtn.disabled = false;
+    startBtn.textContent = '🟢 Start Webcam Swapper';
+
+    // Clear visible display canvas
+    const canvas = document.getElementById('webcam-display-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    toast('Live webcam swapper deactivated.', 'warning');
+  }
+
+  async function captureWebcamFrameLoop() {
+    if (!state.webcamActive) return;
+
+    const video = document.getElementById('webcam-video');
+    const hiddenCanvas = document.getElementById('webcam-hidden-canvas');
+    const displayCanvas = document.getElementById('webcam-display-canvas');
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      hiddenCanvas.width = video.videoWidth;
+      hiddenCanvas.height = video.videoHeight;
+      displayCanvas.width = video.videoWidth;
+      displayCanvas.height = video.videoHeight;
+
+      const hiddenCtx = hiddenCanvas.getContext('2d');
+      hiddenCtx.drawImage(video, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+
+      const dCtx = displayCanvas.getContext('2d');
+
+      // Grab frame B64 and send to server IF not currently waiting on a frame swap
+      if (!state.webcamProcessing && state.sourceB64 && state.modelsReady) {
+        state.webcamProcessing = true;
+        const frameB64 = hiddenCanvas.toDataURL("image/jpeg", 0.6); // Compress to 60% quality for swift transit
+
+        const strength = parseInt(document.getElementById('web-strength-slider').value) / 100;
+        const genderFilter = document.getElementById('web-gender-select').value;
+        const sourceFaceIdx = parseInt(document.getElementById('source-face-index').value) || 0;
+
+        const startTime = performance.now();
+
+        try {
+          const res = await fetch('/api/swap_webcam', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              source_image: state.sourceB64,
+              target_frame: frameB64,
+              strength: strength,
+              gender_filter: genderFilter,
+              face_order: 'left-right',
+              source_face_index: sourceFaceIdx
+            })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            
+            // Draw swapped B64 frame on visible canvas
+            const img = new Image();
+            img.onload = () => {
+              dCtx.drawImage(img, 0, 0, displayCanvas.width, displayCanvas.height);
+              
+              // Calculate latency & FPS
+              const elapsed = performance.now() - startTime;
+              state.webcamFrameCount++;
+              
+              const now = performance.now();
+              if (now - state.webcamLastTime >= 1000) {
+                state.webcamFps = Math.round((state.webcamFrameCount * 1000) / (now - state.webcamLastTime));
+                state.webcamFrameCount = 0;
+                state.webcamLastTime = now;
+              }
+
+              document.getElementById('webcam-stats-badge').textContent = `Speed: ${state.webcamFps} FPS · Inference: ${Math.round(elapsed)}ms`;
+            };
+            img.src = data.result_frame;
+          } else {
+            // Draw original webcam stream directly if face swapping fails (fallback)
+            dCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+          }
+        } catch (err) {
+          dCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+        } finally {
+          state.webcamProcessing = false;
+        }
+      } else if (!state.webcamProcessing) {
+        // Draw normal stream directly if models not loaded or source face missing
+        dCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+      }
+    }
+
+    state.webcamRequestRef = requestAnimationFrame(captureWebcamFrameLoop);
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Button State Refreshers
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function updateSwapButtonStates() {
+    const ready = state.sourceB64 && state.modelsReady;
+    
+    // Photo button
+    document.getElementById('swap-photo-btn').disabled = !(ready && state.targetPhotoB64);
+    
+    // Video button
+    document.getElementById('swap-video-btn').disabled = !(ready && state.targetVideoFile);
+
+    // Webcam button
+    document.getElementById('start-webcam-btn').disabled = !ready;
+
+    // Batch button
+    const swapBatchBtn = document.getElementById('swap-batch-btn');
+    if (swapBatchBtn) {
+      swapBatchBtn.disabled = !(ready && state.targetBatchFiles && state.targetBatchFiles.length > 0);
+    }
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Zone Drag & Drop Listeners
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function attachSourceZoneListeners() {
+    const zone = document.getElementById('source-zone');
+    const input = document.getElementById('source-input');
+    
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) handleSourceFile(file);
+    });
+    zone.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT' && input) input.click();
+    });
+    if (input) {
+      input.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleSourceFile(e.target.files[0]);
+      });
+    }
+  }
+
+  function attachTargetPhotoZoneListeners() {
+    const zone = document.getElementById('target-photo-zone');
+    const input = document.getElementById('target-photo-input');
+    
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) handleTargetPhotoFile(file);
+    });
+    zone.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT' && input) input.click();
+    });
+    if (input) {
+      input.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleTargetPhotoFile(e.target.files[0]);
+      });
+    }
+  }
+
+  function attachTargetVideoZoneListeners() {
+    const zone = document.getElementById('target-video-zone');
+    const input = document.getElementById('target-video-input');
+    
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && (file.type.startsWith('video/') || file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'))) handleTargetVideoFile(file);
+    });
+    zone.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT' && input) input.click();
+    });
+    if (input) {
+      input.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleTargetVideoFile(e.target.files[0]);
+      });
+    }
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Slider Initializers
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function initSliders() {
+    const configs = [
+      { slider: 'strength-slider', value: 'strength-value' },
+      { slider: 'v-strength-slider', value: 'v-strength-value' },
+      { slider: 'web-strength-slider', value: 'web-strength-value' },
+      { slider: 'b-strength-slider', value: 'b-strength-value' }
+    ];
+
+    configs.forEach(c => {
+      const slider = document.getElementById(c.slider);
+      const val = document.getElementById(c.value);
+      if (slider && val) {
+        slider.addEventListener('input', () => {
+          val.textContent = slider.value + '%';
+          const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+          slider.style.background = `linear-gradient(to right, #8b5cf6 0%, #06b6d4 ${pct}%, rgba(255,255,255,0.08) ${pct}%)`;
+        });
+        slider.dispatchEvent(new Event('input'));
+      }
+    });
+  }
+
+  function b64ToBlob(b64Data, contentType = '', sliceSize = 512) {
+    const byteCharacters = atob(b64Data.split(',')[1] || b64Data);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, {type: contentType});
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Initialisation
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  function init() {
+    initTabs();
+    initSliders();
+    
+    attachSourceZoneListeners();
+    attachTargetPhotoZoneListeners();
+    attachTargetVideoZoneListeners();
+    attachTargetBatchZoneListeners();
+
+    // Custom actions listeners
+    document.getElementById('swap-photo-btn').addEventListener('click', performPhotoSwap);
+    document.getElementById('swap-video-btn').addEventListener('click', performVideoSwap);
+    document.getElementById('swap-batch-btn').addEventListener('click', performBatchSwap);
+    document.getElementById('clear-batch-btn').addEventListener('click', clearBatch);
+    
+    document.getElementById('start-webcam-btn').addEventListener('click', startWebcamSwap);
+    document.getElementById('stop-webcam-btn').addEventListener('click', stopWebcamSwap);
+    
+    document.getElementById('capture-webcam-btn').addEventListener('click', () => {
+      if (!state.webcamActive) return;
+      const displayCanvas = document.getElementById('webcam-display-canvas');
+      const b64 = displayCanvas.toDataURL("image/jpeg", 1.0);
+      
+      const blob = b64ToBlob(b64, 'image/jpeg');
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `webcam_faceswap_${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { a.remove(); URL.revokeObjectURL(blobUrl); }, 100);
+      toast('📸 Snapshot captured and downloaded successfully!', 'success');
+    });
+    
+    document.getElementById('source-face-index').addEventListener('change', updateSwapButtonStates);
+
+    checkModelStatus();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
